@@ -1,8 +1,6 @@
 # Live Iterative Ptychography with projection-based algorithms
 
-
-https://github.com/sp-uhh/livepty/assets/669103/f3ddcca7-5918-4067-8946-c2b1c01bcd2e
-
+https://github.com/sp-uhh/livepty/assets/669103/46075137-da33-4692-8cb7-61fc5eb9a9d1
 
 Accompanying code repository for our work
 [**Live Iterative Ptychography with projection-based algorithms**](https://arxiv.org/abs/2309.08639).
