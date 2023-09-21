@@ -8,7 +8,8 @@ from typing import Union, List, Optional
 import numpy as np
 import h5py
 
-from .pty_base import ifft2, update_object, update_probe
+from .pty_base import ifft2, update_object, update_probe, stft2, istft2, get_naive_phase_init
+from .pty_data import get_object_and_probe, get_scan, get_diffraction_patterns
 
 
 def get_git_revision_hash():
@@ -78,3 +79,24 @@ def get_result(folder_or_file: pathlib.Path, data_idx: Optional[int], key_or_key
             return [f[key][:] for key in key_or_keys]
         else:
             return f[key_or_keys][:]
+
+
+def get_data(data_idx, scandens, lamb, Ifac, naive_phase_init, ctype, ftype):
+    # Initialize / read object and probe
+    O, P = get_object_and_probe(data_idx, small=True, normprobe=True, ctype=ctype)
+
+    # Initialize ground-truth STFT, from-STFT inverted object, and (noiseless) diffraction patterns
+    rk = get_scan(scandens, O, P)
+    stft_gt = stft2(O, rk, P)
+    O_gt = istft2(stft_gt, rk, P, O.shape, eps=1e-12)
+    Ak_gt = np.abs(stft_gt)
+
+    # Simulate Poisson noise statistics and re-scale diffraction patterns. Use same random seed as default for
+    # central-region reconstruction script, so we get consistent diffraction patterns
+    np.random.seed(675820+data_idx)
+    Ak = get_diffraction_patterns(Ak_gt, lamb=lamb, Ifac=Ifac).astype(ftype)
+
+    # Get initial exit wave guess from the final diffraction patterns Ak
+    Psik0 = ifft2(get_naive_phase_init(Ak, naive_phase_init)).astype(ctype)
+
+    return Ak, rk, Psik0, O_gt, P, stft_gt

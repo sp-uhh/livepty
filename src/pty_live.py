@@ -87,7 +87,7 @@ def run_rtisi_psi(
 
     # Track initial estimates if track_interm is not None
     if track_interm is not None:
-        initial = {'Psi': Psikj, 'O': Oj, 'P': Pj, 'ps_O': ps_O, 'ps_P': ps_P}
+        initial = {'Psi': Psikj, 'O': Oj, 'P': Pj, 'ps_O': ps_O, 'ps_P': ps_P, 'r': rk[:B]}
         all_interms = [{k: v for k, v in initial.items() if k in track_interm}]
 
     for k in TQDM(range(0, kmax, 1)):  # Process k exit waves sequentially. This is the 'outer loop'
@@ -122,9 +122,12 @@ def run_rtisi_psi(
         for j in range(iters):
             state = alg.iterate(state, probe_update=pu_iter, partial_sums=(ps_O_crop, ps_P))
             if track_interm is not None:
+                Opart = alg.get_object(state)
+                Ofull = np.copy(Oj)
+                Ofull[cut] = Opart
                 interms_dict = {
-                    'Psi': alg.get_psi(state), 'O': alg.get_object(state), 'P': alg.get_probe(state),
-                    'ps_O': ps_O, 'ps_P': ps_P
+                    'Psi': alg.get_psi(state), 'O': Ofull, 'Opart': Opart, 'P': alg.get_probe(state),
+                    'ps_O': ps_O, 'ps_P': ps_P, 'r': r_fluid,
                 }
                 all_interms.append({k: v for k, v in interms_dict.items() if k in track_interm})
 

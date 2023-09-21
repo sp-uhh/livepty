@@ -94,7 +94,7 @@ def update_object(Psi, p, w, Oshape, Otype=np.complex64, wsyn=None, eps=1e-12, p
     return O_hat, (Owin, Wsum)
 
 
-def update_probe(Psi, p, O, wshape, wtype=np.complex64, eps=1e-12, ps_P=None, clip_quantile=None, wpower=None):
+def update_probe(Psi, p, O, wshape, wtype=np.complex64, eps=1e-12, ps_P=None, clip_quantile=None, Ppower=None):
     wsx, wsy = wshape
     Oint = np.abs(O)**2
     Oconj = O.conj()
@@ -115,8 +115,8 @@ def update_probe(Psi, p, O, wshape, wtype=np.complex64, eps=1e-12, ps_P=None, cl
         Wavesum += Psi[i] * clip_max_to_quantile_complex(Oconj_local, q)
     w_hat = Wavesum / np.maximum(Osum, eps)
 
-    if wpower is not None:
-        w_hat = w_hat / get_power(w_hat) * wpower
+    if Ppower is not None:
+        w_hat = w_hat / get_power(w_hat) * Ppower
     
     return w_hat, (Osum, Wavesum)
 
@@ -164,29 +164,29 @@ def update_object_and_probe_psi_cached(
 ):
     p_probe = rk if p_Psi_probe is None else p_Psi_probe[0]
     Psi_probe = Psikj if p_Psi_probe is None else p_Psi_probe[1]
-    wpower = get_power(Pj)
-    pkwargs = dict(eps=eps, ps_P=ps_P, clip_quantile=probe_clip_quantile, wpower=wpower)
+    Ppower = get_power(Pj)
+    Pkwargs = dict(eps=eps, ps_P=ps_P, clip_quantile=probe_clip_quantile, Ppower=Ppower)
     if not probe_update:
-        _, ps_P2 = update_probe(Psi_probe, p_probe, Oj, Pj.shape, Pj.dtype, **pkwargs)
+        _, ps_P2 = update_probe(Psi_probe, p_probe, Oj, Pj.shape, Pj.dtype, **Pkwargs)
         O2, ps_O2 = update_object(Psikj, rk, Pj, Oj.shape, Oj.dtype, eps=eps, ps_O=ps_O)
         return O2, Pj, ps_O2, ps_P2
 
     if mode == ObjectProbeUpdateMode.PROBE_THEN_OBJECT:
-        w2, ps_P2 = update_probe(Psi_probe, p_probe, Oj, Pj.shape, Pj.dtype, **pkwargs)
+        w2, ps_P2 = update_probe(Psi_probe, p_probe, Oj, Pj.shape, Pj.dtype, **Pkwargs)
         O2, ps_O2 = update_object(Psikj, rk, w2, Oj.shape, Oj.dtype, eps=eps, ps_O=ps_O)
     elif mode == ObjectProbeUpdateMode.PROBE_WITH_PA_THEN_OBJECT:
-        w2, ps_P2 = update_probe(pA_Psi(Psi_probe, Ak), p_probe, Oj, Pj.shape, Pj.dtype, **pkwargs)
+        w2, ps_P2 = update_probe(pA_Psi(Psi_probe, Ak), p_probe, Oj, Pj.shape, Pj.dtype, **Pkwargs)
         O2, ps_O2 = update_object(Psikj, rk, w2, Oj.shape, eps=eps, ps_O=ps_O)
     elif mode == ObjectProbeUpdateMode.OBJECT_THEN_PROBE:
         O2, ps_O2 = update_object(Psikj, rk, Pj, Oj.shape, Oj.dtype, eps=eps, ps_O=ps_O)
-        w2, ps_P2 = update_probe(Psi_probe, p_probe, O2, Pj.shape, Pj.dtype, **pkwargs)
+        w2, ps_P2 = update_probe(Psi_probe, p_probe, O2, Pj.shape, Pj.dtype, **Pkwargs)
     elif mode == ObjectProbeUpdateMode.OBJECT_THEN_PROBE_WITH_PA:
         O2, ps_O2 = update_object(Psikj, rk, Pj, Oj.shape, Oj.dtype, eps=eps, ps_O=ps_O)
-        w2, ps_P2 = update_probe(pA_Psi(Psi_probe, Ak), p_probe, O2, Pj.shape, Pj.dtype, **pkwargs)
+        w2, ps_P2 = update_probe(pA_Psi(Psi_probe, Ak), p_probe, O2, Pj.shape, Pj.dtype, **Pkwargs)
     elif mode == ObjectProbeUpdateMode.OBJECT_THEN_PROBE_WITH_PA_PC:
         O2, ps_O2 = update_object(Psikj, rk, Pj, Oj.shape, Oj.dtype, eps=eps, ps_O=ps_O)
         # we don't need to overlap-add again after getting O2, so the 'pC' is performed via segment2(update_object(...)) here
-        w2, ps_P2 = update_probe(pA_Psi(segment2(O2, p_probe, Pj), Ak), p_probe, O2, Pj.shape, Pj.dtype, **pkwargs)
+        w2, ps_P2 = update_probe(pA_Psi(segment2(O2, p_probe, Pj), Ak), p_probe, O2, Pj.shape, Pj.dtype, **Pkwargs)
     else:
         raise ValueError(f"Unknown ObjectProbeUpdateMode: {mode}")
 

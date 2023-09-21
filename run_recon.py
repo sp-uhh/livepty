@@ -5,11 +5,11 @@ import h5py
 
 import numpy as np
 
-from src.pty_base import ifft2, stft2, istft2, get_naive_phase_init,  ObjectProbeUpdateMode
+from src.pty_base import ObjectProbeUpdateMode
 from src.pty_algs import parse_alg, parse_eps
 from src.pty_live import run_rtisi_psi, RealTimeProbeUpdate
-from src.pty_data import get_scan, get_object_and_probe, get_norm_probe, get_diffraction_patterns
-from src.run_utils import get_git_revision_hash, get_random_runname, save_results
+from src.pty_data import get_norm_probe
+from src.run_utils import get_data, get_git_revision_hash, get_random_runname, save_results
 
 
 ctype = np.complex64
@@ -91,22 +91,12 @@ outpath.mkdir(parents=True, exist_ok=True)
 with open(outpath / f'{data_idx}_meta.pkl', "wb") as output_file:
     pickle.dump({'type': 'rtisi', 'args': args, 'commit': get_git_revision_hash()}, output_file)
 
-# Initialize / read object and probe
-O, P = get_object_and_probe(data_idx, small=not args.full, normprobe=True, ctype=ctype)
-
-# Initialize ground-truth STFT, from-STFT inverted object, and (noiseless) diffraction patterns
-rk = get_scan(args.scandens, O, P)
-stft_gt = stft2(O, rk, P)
-O_gt = istft2(stft_gt, rk, P, O.shape, eps=1e-12)
-Ak_gt = np.abs(stft_gt)
-
-# Simulate Poisson noise statistics and re-scale diffraction patterns. Use same random seed as default for
-# central-region reconstruction script, so we get consistent diffraction patterns
-np.random.seed(675820+data_idx)
-Ak = get_diffraction_patterns(Ak_gt, lamb=args.poisson_lambda_max, Ifac=args.Ifac).astype(ftype)
-
-# Get initial exit wave guess from the final diffraction patterns Ak
-Psik0 = ifft2(get_naive_phase_init(Ak, args.naive_phase_init)).astype(ctype)
+# Get data
+Ak, rk, Psik0, O_gt, P, stft_gt = get_data(
+    data_idx, args.scandens,
+    lamb=args.poisson_lambda_max, Ifac=args.Ifac,
+    naive_phase_init=args.naive_phase_init, ctype=ctype, ftype=ftype
+)
 
 # The buffersize determines how much information we have access to in the first step, so get it here already
 B = args.buffersize
@@ -141,7 +131,7 @@ print(f"Using algorithm: {alg}")
 
 # Run reconstruction!
 Of, Pf, Psif, _, _, _ = run_rtisi_psi(
-    Ak, rk, O.shape, P0,
+    Ak, rk, O_gt.shape, P0,
     B=B, alg=alg, iters=args.iters,
     phi0_est_idxs=args.phi0_idxs,
     naive_phase_init=args.naive_phase_init,
