@@ -1,5 +1,7 @@
 # Live Iterative Ptychography with projection-based algorithms
 
+https://github.com/sp-uhh/livepty/assets/669103/46075137-da33-4692-8cb7-61fc5eb9a9d1
+
 Accompanying code repository for our work
 [**Live Iterative Ptychography with projection-based algorithms**](https://arxiv.org/abs/2309.08639).
 Developed by Simon Welker and Tal Peer, based in part on the bachelor thesis of Johannes Kolhoff.
